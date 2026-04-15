@@ -1,0 +1,6 @@
+{
+  "name": "optimizely-cms",
+  "description": "Optimizely CMS skills for GitHub Copilot, including step-by-step guidance for upgrading from CMS 12 to CMS 13.",
+  "skills": ["./skills/"],
+  "version": "0.1.0"
+}
