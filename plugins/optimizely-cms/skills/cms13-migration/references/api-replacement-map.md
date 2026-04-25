@@ -116,3 +116,30 @@ These were transitive in CMS 12. Add `<PackageReference>` explicitly in CMS 13:
 | Plugin system (`PlugInAttribute`, `ScheduledPlugInAttribute`) | Use `ScheduledJobAttribute` for jobs |
 | `Castle.Windsor` dependency | Add explicit package if needed |
 | `Newtonsoft.Json` dependency | Add explicit package if needed |
+
+---
+
+## Common compile-error quick-lookup
+
+| Error | Fix |
+|---|---|
+| `IServiceLocator` not found | Replace with constructor injection |
+| `ITemplateResolverEvents` not found | Add `using EPiServer.Web` |
+| `SiteDefinition.Current` | Inject `IApplicationResolver` (`using EPiServer.Applications`) |
+| `IApplicationResolver` / `IRoutableApplication` not found | Add `using EPiServer.Applications;` (or `@using EPiServer.Applications` in Razor views) |
+| `PageReference` ambiguous/obsolete | Replace with `ContentReference` |
+| `ContentArea.FilteredItems` | Use `ContentArea.Items` |
+| `ToHtmlString(IPrincipal)` | Use Tag Helpers / `Html.PropertyFor()` |
+| `BlockTypeRepository` / `PageTypeRepository` | Use `IContentTypeRepository` |
+| `IContentRouteEvents` | Use `IContentUrlResolverEvents` / `IContentUrlGeneratorEvents` |
+| `ScheduledPlugInAttribute` | Use `ScheduledJobAttribute` |
+| `DynamicProperty` | Remove — no replacement |
+| `AddCmsCore()` namespace error | `using EPiServer.DependencyInjection;` |
+| `AddCmsAspNetIdentity()` not found | `using EPiServer.DependencyInjection;` (same namespace — add even if `AddCmsCore` already works) |
+| `IValidate<T>` not picked up | `services.AddCmsValidator<T>()` |
+| `context.Locate.Advanced.GetInstance<T>()` fails | `IServiceLocator` is removed; replace with `context.Services.GetInstance<T>()` |
+| `'IContentRouteHelper' does not contain 'Page'` | Use `PageContext.Content` — `PageContext` exposes `.Content` directly in controller base classes |
+| `'PageData.PageLink' is obsolete` warning | Replace with `page.ContentLink` throughout code and views |
+| `IVisitorGroupRepository` / visitor group criteria not found at runtime | Add `services.AddVisitorGroupsMvc()` and `services.AddVisitorGroupsUI()` |
+| `ValidationException` thrown on `SaveAction.Publish` | Content is under an approval definition — add `SaveAction.SkipApprovalValidation` (requires Administer rights) |
+| Editor configuration missing after upgrade (`ClientEditorAttribute`) | `EditorConfiguration` JSON must use double-quoted property names — System.Text.Json is strict |

@@ -19,7 +19,7 @@ These are silent failures that won't produce obvious errors at the right moment 
 - **`context.Locate.Advanced` inside `IConfigurableModule.Initialize()` fails.** `InitializationEngine.Locate` returns `IServiceLocator`, which is removed. Any call like `context.Locate.Advanced.GetInstance<T>()` will not compile. Replace with `context.Services.GetInstance<T>()`.
 - **`ServiceLocator.Current.GetInstance<T>()` no longer compiles anywhere.** The `GetInstance<T>()` extension came from `ServiceLocatorExtensions`, which is removed. `ServiceLocator.Current` itself still works in CMS 13 (now returns `IServiceProvider`), but you must switch to `.GetRequiredService<T>()` (from `Microsoft.Extensions.DependencyInjection`). The fix varies by context — see Step 4.
 - **The DI namespace change is a silent build failure.** If you have `using Microsoft.Extensions.DependencyInjection;` and call `AddCmsCore()`, the old extension method is gone — you get a confusing "no overload" error. Change to `using EPiServer.DependencyInjection;`.
-- **`IApprovalEngine` now enforces the approval workflow before publishing.** Content under an approval definition will throw `ValidationException` on `SaveAction.Publish`. To bypass (e.g., in programmatic migrations), the current user must have Administer rights and you must pass `SaveAction.SkipApprovalValidation`. See [`references/security-and-access-control.md`](references/security-and-access-control.md).
+- **`IApprovalEngine` now enforces the approval workflow before publishing.** Content under an approval definition will throw `ValidationException` on `SaveAction.Publish`. To bypass (e.g., in programmatic migrations), the current user must have Administer rights and you must pass `SaveAction.SkipApprovalValidation`. When you need the full skip-flag table or access-level bypass patterns, read [`references/security-and-access-control.md`](references/security-and-access-control.md).
 - **`IContentVersionRepository.List` silently returns `totalCount = -1`.** Unless you explicitly set `VersionFilter.IncludeTotalCount = true`, the count is not computed. Code that reads `totalCount` after calling `List` will receive `-1` with no error.
 - **`ClientEditorAttribute.EditorConfiguration` JSON must use double-quoted property names.** CMS 13 parses this with `System.Text.Json`. Single-quoted or unquoted JSON property keys (common in C# string literals) will silently fail to deserialize, producing an empty editor configuration.
 - **`/lang` folder localization files are no longer auto-registered.** The `XmlLocalizationProvider` that scanned the `/lang` folder on startup is removed. If you have XML language files there, they must be switched to embedded resources in the assembly instead. See [`references/framework-and-platform.md`](references/framework-and-platform.md) for localization changes.
@@ -27,7 +27,11 @@ These are silent failures that won't produce obvious errors at the right moment 
 
 ## Migration workflow
 
-Work through each area below in order. Many steps are independent but some (particularly framework/NuGet changes) should be done first to get the project compiling.
+Work through each area below in order. Steps 1–4 must complete before the project will compile again.
+
+**Phase 1 — Foundation** (steps 1–4): .NET target framework, incompatible packages, NuGet update, DI namespace  
+**Phase 2 — API migration** (steps 5–16): service locator, SiteDefinition, PageReference, content types, ContentArea, routing, validators, SaveAction  
+**Phase 3 — Cleanup** (steps 17–20): UI URLs, Newtonsoft.Json, security review, build warnings
 
 ### Step 1 — Update .NET target framework
 
@@ -92,7 +96,7 @@ services.AddCmsGeolocation();
 services.AddCmsChangeNotification();
 ```
 
-See [`references/framework-and-platform.md`](references/framework-and-platform.md) for the full table of extracted packages and registration methods.
+When using namespaces from packages that were previously transitive (e.g. `EPiServer.Framework.Blobs`, `EPiServer.Framework.Cache`, `EPiServer.Logging`), read [`references/framework-and-platform.md`](references/framework-and-platform.md) for the full table of extracted packages and registration methods.
 
 ---
 
@@ -112,7 +116,7 @@ Affected: `AddCmsCore()`, `AddCmsData()`, `AddCmsFramework()`, `AddTinyMce()`, `
 
 ### Step 5 — Remove service locator usages
 
-Replace constructor injection of removed types (`IServiceLocator`, `ServiceLocationHelper`, etc.) with standard constructor injection from `Microsoft.Extensions.DependencyInjection`. See [`references/framework-and-platform.md`](references/framework-and-platform.md).
+Replace constructor injection of removed types (`IServiceLocator`, `ServiceLocationHelper`, etc.) with standard constructor injection from `Microsoft.Extensions.DependencyInjection`. When you encounter types not listed above (`IInterceptorRegister`, `IRegisteredService`, `IServiceConfigurationProvider`, etc.), read [`references/framework-and-platform.md`](references/framework-and-platform.md).
 
 The `GetInstance<T>()` extension method is removed (it came from `ServiceLocatorExtensions`). `ServiceLocator.Current` still exists in CMS 13 and now returns `IServiceProvider`. The replacement depends on the context:
 
@@ -291,7 +295,7 @@ public const string MetaData = "Meta Data";  // space — invalid
 public const string MetaData = "MetaData";   // no space
 ```
 
-See [`references/content-types-and-properties.md`](references/content-types-and-properties.md).
+When you need the full naming regex, the prefix table for all definition types, or the complete Dynamic Property removal list, read [`references/content-types-and-properties.md`](references/content-types-and-properties.md).
 
 ---
 
@@ -371,11 +375,7 @@ private readonly IContentUrlGeneratorEvents _generatorEvents;
 _generatorEvents.GeneratingUrl += OnGeneratingUrl;
 ```
 
-See [`references/sites-and-routing.md`](references/sites-and-routing.md).
-
----
-
-### Step 15 — Replace `SaveAction` usages
+When you need the full event member mapping (`UrlResolverContext`, `UrlGeneratorContext` property renames) or other routing context changes, read [`references/sites-and-routing.md`](references/sites-and-routing.md).
 
 | Before | After |
 |---|---|
@@ -422,7 +422,7 @@ Review the access control and approval workflow changes:
 - `PermissionRepository` sync methods removed — use async equivalents
 - `IContentSecurityRepository` events moved to `IContentSecurityEvents` interface
 
-See [`references/security-and-access-control.md`](references/security-and-access-control.md) for details.
+When implementing programmatic publish flows, customizing `AccessControlEntry`, or using preview tokens, read [`references/security-and-access-control.md`](references/security-and-access-control.md).
 
 ---
 
@@ -434,27 +434,4 @@ build the solution and look for warnings about obsolete APIs. Many of these have
 
 ## Common compile-error patterns after upgrade
 
-| Error | Fix |
-|---|---|
-| `IServiceLocator` not found | Replace with constructor injection |
-| `ITemplateResolverEvents` not found | add `using EPiServer.Web`  |
-| `SiteDefinition.Current` | Inject `IApplicationResolver` (`using EPiServer.Applications`) |
-| `IApplicationResolver` / `IRoutableApplication` not found | Add `using EPiServer.Applications;` (or `@using EPiServer.Applications` in Razor views) |
-| `PageReference` ambiguous/obsolete | Replace with `ContentReference` |
-| `ContentArea.FilteredItems` | Use `ContentArea.Items` |
-| `ToHtmlString(IPrincipal)` | Use Tag Helpers / `Html.PropertyFor()` |
-| `BlockTypeRepository` / `PageTypeRepository` | Use `IContentTypeRepository` |
-| `IContentRouteEvents` | Use `IContentUrlResolverEvents` / `IContentUrlGeneratorEvents` |
-| `ScheduledPlugInAttribute` | Use `ScheduledJobAttribute` |
-| `DynamicProperty` | Remove — no replacement |
-| `AddCmsCore()` namespace error | `using EPiServer.DependencyInjection;` |
-| `AddCmsAspNetIdentity()` not found | `using EPiServer.DependencyInjection;` (same namespace — add even if `AddCmsCore` already works) |
-| `IValidate<T>` not picked up | `services.AddCmsValidator<T>()` |
-| `context.Locate` / `context.Locate.Advanced.GetInstance<T>()` fails | `IServiceLocator` is removed; replace with `context.Services.GetInstance<T>()` |
-| `'IContentRouteHelper' does not contain 'Page'` | Use `PageContext.Content` — in CMS 13, `PageContext` exposes `.Content` instead of `.Page`; no need to inject `IContentRouteHelper` separately in controller base classes |
-| `'PageData.PageLink' is obsolete` warning | Replace with `page.ContentLink` throughout code and views |
-| `IVisitorGroupRepository` / visitor group criteria not found at runtime | Add `services.AddVisitorGroupsMvc()` and `services.AddVisitorGroupsUI()` in service registration |
-| `ValidationException` thrown on `SaveAction.Publish` for content with approval workflow | Add `SaveAction.SkipApprovalValidation` to the save action (requires Administer rights) |
-| Editor configuration missing after upgrade (`ClientEditorAttribute`) | Ensure `EditorConfiguration` JSON uses double-quoted property names — System.Text.Json is strict |
-
-If an API isn't covered above, consult [`references/api-replacement-map.md`](references/api-replacement-map.md) for the complete CMS 12 → 13 type, method, event, and namespace mapping.
+When the build fails after upgrading and the step above doesn't address it, read [`references/api-replacement-map.md`](references/api-replacement-map.md) — it contains a quick-lookup table of common compile errors and their fixes, plus the complete CMS 12 → 13 type, method, event, and namespace mapping.
