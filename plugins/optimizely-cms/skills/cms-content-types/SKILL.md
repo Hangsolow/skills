@@ -117,9 +117,7 @@ public class AddressBlock : BlockData
 
 ## Choosing the right property type
 
-For the full lookup table (what you want → .NET type → UIHint → editor), see [`references/property-types.md`](references/property-types.md).
-
-Quick guide:
+Quick guide — if the type you need is not here, read [`references/property-types.md`](references/property-types.md) for the full lookup table including UIHint constants, `IList<T>` patterns, and backing types.
 
 | Scenario | Use |
 |---|---|
@@ -145,7 +143,9 @@ public virtual string Heading { get; set; }       // different per language
 public virtual ContentReference HeroImage { get; set; } // shared across all languages
 ```
 
-Properties that are NOT `[CultureSpecific]` are stored once and shared across all language versions of the content. Changes in one language affect all languages. See [`references/property-attributes.md`](references/property-attributes.md).
+Properties that are NOT `[CultureSpecific]` are stored once and shared across all language versions of the content. Changes in one language affect all languages.
+
+When you need attributes beyond `[CultureSpecific]`, `[Display]`, `[UIHint]`, or `[Required]` — such as `[BackingType]`, `[Ignore]`, `[AllowedTypes]`, `[Access]`, `[Searchable]`/`[IndexingType]`, or list-item validators — read [`references/property-attributes.md`](references/property-attributes.md).
 
 ---
 
@@ -161,7 +161,9 @@ public virtual string Author { get; set; }
 public virtual DateTime PublishedDate { get; set; }
 ```
 
-Use `SystemTabNames.Content` and `SystemTabNames.Settings` for the built-in CMS tabs. Define custom group constants in a `[GroupDefinitions]` class for reuse. See [`references/grouping-and-ordering.md`](references/grouping-and-ordering.md).
+Use `SystemTabNames.Content` and `SystemTabNames.Settings` for the built-in CMS tabs. Define custom group constants in a `[GroupDefinitions]` class for reuse.
+
+When you need to define custom tabs, control tab sort order, apply access restrictions on tabs, or look up `SystemTabNames` actual stored string values, read [`references/grouping-and-ordering.md`](references/grouping-and-ordering.md).
 
 ---
 
@@ -229,7 +231,12 @@ public class ContactPage : PageData
 
 ## Renaming a content type or property
 
-Always use `MigrationStep` to rename — otherwise existing content is orphaned. See [`references/refactoring.md`](references/refactoring.md) for the full API.
+Always use `MigrationStep` — otherwise existing content is orphaned.
+
+**Rename checklist:**
+1. Write the `MigrationStep` class (see example below) **before** renaming in code
+2. Rename the class or property in code
+3. Build and start the application — sync runs automatically and carries over existing data
 
 ```csharp
 public class RenameMigration : MigrationStep
@@ -242,11 +249,23 @@ public class RenameMigration : MigrationStep
 }
 ```
 
+When moving a property to a different base class (same name, different declaring type) or needing to understand the full `MigrationStep` API, read [`references/refactoring.md`](references/refactoring.md).
+
 ---
 
 ## Changing a property's type safely
 
-A property's .NET type can only be changed if: neither old nor new type is a block; old values can be converted; and the new backing `PropertyData` implements `IConvertible`. If these conditions aren't met, remove the property, let sync clear it, then re-add it with the new type. See [`references/refactoring.md`](references/refactoring.md) for the full prerequisites.
+Before changing a property's .NET type, verify **all** of the following:
+
+- [ ] Neither the old nor the new type is a **block** type
+- [ ] If the new type is `string`, no existing value exceeds 255 characters
+- [ ] Existing values can be assigned to the new type, OR the new type's `ParseToSelf` method can parse them
+- [ ] The new type's backing `PropertyData` implements `System.IConvertible`
+- [ ] The new type's `PropertyData.Type` is one of the first seven `PropertyDataType` values
+
+If any condition fails → create a new property with a different name and the desired type, then migrate data manually (or accept data loss by removing the old property, deleting it in the admin view, and re-adding with the new name and type).
+
+For the full procedure and the data-loss step sequence, read [`references/refactoring.md`](references/refactoring.md).
 
 ---
 
