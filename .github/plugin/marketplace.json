@@ -1,0 +1,19 @@
+{
+  "name": "hangsolow-skills",
+  "owner": {
+    "name": "Hangsolow",
+    "url": "https://github.com/Hangsolow"
+  },
+  "metadata": {
+    "description": "Optimizely CMS skills for GitHub Copilot",
+    "version": "1.0.0"
+  },
+  "plugins": [
+    {
+      "name": "optimizely-cms",
+      "description": "Optimizely CMS skills — CMS 12→13 migration and content type authoring",
+      "version": "1.1.0",
+      "source": "./plugins/optimizely-cms"
+    }
+  ]
+}

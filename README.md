@@ -14,11 +14,34 @@ Optimizely CMS skills for GitHub Copilot, including step-by-step guidance for up
 
 #### Install
 
-Add this repository as a plugin marketplace in VS Code:
+**VS Code — Extensions GUI (recommended)**
+
+1. Open the Extensions view (<kbd>Ctrl+Shift+X</kbd> / <kbd>⇧⌘X</kbd>) and search `@agentPlugins`
+2. Find **optimizely-cms** and click **Install**
+
+**VS Code — settings.json**
+
+Add the marketplace and VS Code will discover the plugin automatically:
 
 ```json
-// .vscode/settings.json
+// .vscode/settings.json  (or user settings.json)
 "chat.plugins.marketplaces": ["Hangsolow/skills"]
 ```
 
-Or install directly from source via the Command Palette: **Chat: Install Plugin From Source**.
+**Copilot CLI**
+
+```sh
+# Register the marketplace once
+copilot plugin marketplace add Hangsolow/skills
+
+# Then install the plugin
+copilot plugin install optimizely-cms@hangsolow-skills
+```
+
+**Direct install (no marketplace registration)**
+
+```sh
+# VS Code Command Palette → Chat: Install Plugin From Source
+# or CLI:
+copilot plugin install Hangsolow/skills:plugins/optimizely-cms
+```

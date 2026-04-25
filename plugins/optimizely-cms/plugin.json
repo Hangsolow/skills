@@ -1,6 +1,12 @@
 {
   "name": "optimizely-cms",
-  "description": "Optimizely CMS skills for GitHub Copilot, including step-by-step guidance for upgrading from CMS 12 to CMS 13.",
-  "skills": ["./skills/"],
-  "version": "0.1.0"
+  "description": "Optimizely CMS skills for GitHub Copilot — step-by-step guidance for upgrading from CMS 12 to CMS 13 and authoring page/block content types.",
+  "version": "1.1.0",
+  "author": {
+    "name": "Hangsolow",
+    "url": "https://github.com/Hangsolow"
+  },
+  "license": "MIT",
+  "keywords": ["optimizely", "cms", "episerver", "dotnet", "cms13", "migration"],
+  "skills": "skills/"
 }
