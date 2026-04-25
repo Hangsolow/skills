@@ -41,7 +41,33 @@ Update Docker base images and CI/CD pipelines to use .NET 10 images.
 
 ---
 
-### Step 2 — Update NuGet packages
+### Step 2 — Remove or upgrade incompatible third-party packages
+
+Several popular Optimizely ecosystem packages are incompatible with CMS 13. Check the list and act on each:
+
+| Package | Action |
+|---|---|
+| `EPiServer.Find.Cms` | Remove — no CMS 13 release. Also loses `Newtonsoft.Json` transitively (see Step 17). |
+| `EPiServer.Forms` | Upgrade to 6.0.0+ |
+| `EPiServer.Cms.WelcomeIntegration.UI` | Replace with `EPiServer.Cms.DamIntegration.UI` (6.0.0+) |
+| `Advanced.CMS.AdvancedReviews` | Remove — no CMS 13 release |
+| `Geta.NotFoundHandler.Optimizely` | Remove — incompatible; await updated release |
+| `Geta.Optimizely.Sitemaps` | Remove — incompatible; await updated release |
+| `Geta.Optimizely.GenericLinks` | Remove — incompatible; await updated release |
+| `Geta.Optimizely.ContentTypeIcons` | Remove — incompatible; await updated release |
+| `Geta.Optimizely.Categories` | Remove — incompatible. **Warning:** leaves orphaned `CategoryRoot`/`CategoryData` content types in DB causing "could not create instance" errors at startup. |
+| `Gulla.Episerver.SqlStudio` | Upgrade to 3.0.2+ |
+| `Stott.Optimizely.RobotsHandler` | Remove — incompatible; await updated release |
+
+See [`references/third-party-package-compatibility.md`](references/third-party-package-compatibility.md) for per-package removal steps, the generic removal procedure, and how to handle orphaned content types and scheduled jobs left by removed packages.
+
+ALWAYS check the latest version of each package before starting your migration — some may have released CMS 13-compatible versions since this skill was written.
+
+ALWAYS ask the user if they want to remove incompatible packages or wait for an update, if they want to wait then stop the migration. If they want to remove, offer to help find replacement packages or write custom code for missing features, and warn about the consequences of removal (e.g., orphaned content types, lost features).
+
+---
+
+### Step 3 — Update NuGet packages
 
 Bump `EPiServer.CMS` (and related packages) to version 13.x. After updating, add explicit `<PackageReference>` entries for any previously-transitive packages you use:
 
@@ -70,7 +96,7 @@ See [`references/framework-and-platform.md`](references/framework-and-platform.m
 
 ---
 
-### Step 3 — Fix DI namespace for CMS registration methods
+### Step 4 — Fix DI namespace for CMS registration methods
 
 ```csharp
 // Before
@@ -84,7 +110,7 @@ Affected: `AddCmsCore()`, `AddCmsData()`, `AddCmsFramework()`, `AddTinyMce()`, `
 
 ---
 
-### Step 4 — Remove service locator usages
+### Step 5 — Remove service locator usages
 
 Replace constructor injection of removed types (`IServiceLocator`, `ServiceLocationHelper`, etc.) with standard constructor injection from `Microsoft.Extensions.DependencyInjection`. See [`references/framework-and-platform.md`](references/framework-and-platform.md).
 
@@ -167,7 +193,7 @@ NewsList.Heading = ServiceLocator.Current.GetRequiredService<LocalizationService
 
 ---
 
-### Step 5 — Migrate `SiteDefinition` → `Application`
+### Step 6 — Migrate `SiteDefinition` → `Application`
 
 ```csharp
 // Before
@@ -207,7 +233,7 @@ See [`references/sites-and-routing.md`](references/sites-and-routing.md) for the
 
 ---
 
-### Step 6 — Replace `PageReference` with `ContentReference`
+### Step 7 — Replace `PageReference` with `ContentReference`
 
 `PageReference` is obsolete. Global find-and-replace in most cases:
 On pages and blocks, replace `PageReference` → `ContentReference`. Check properties with `[AllowedTypes]` — if they only allow page types, add `[AllowedTypes(typeof(PageData))]` to preserve validation.
@@ -251,7 +277,7 @@ new SelectItem { Value = page.ContentLink }
 
 ---
 
-### Step 7 — Fix content type / tab naming
+### Step 8 — Fix content type / tab naming
 
 Check all `[GroupDefinitions]` classes and `[ContentType]` / `[TabDefinition]` attributes for names containing spaces or special characters. CMS 13 auto-migrates the database, but code must match:
 
@@ -269,7 +295,7 @@ See [`references/content-types-and-properties.md`](references/content-types-and-
 
 ---
 
-### Step 8 — Remove Dynamic Properties
+### Step 9 — Remove Dynamic Properties
 
 Delete all usages of `DynamicProperty`, `DynamicPropertyCollection`, `DynamicPropertyBag`, and related types. No replacement exists — migrate data to regular content properties.
 
@@ -277,7 +303,7 @@ Read [`references/content-types-and-properties.md`](references/content-types-and
 
 ---
 
-### Step 9 — Fix `ContentArea` and `XhtmlString` usages
+### Step 10 — Fix `ContentArea` and `XhtmlString` usages
 
 ```csharp
 // Before
@@ -296,7 +322,7 @@ Read [`references/content-management-and-repository.md`](references/content-mana
 
 ---
 
-### Step 10 — Fix `IContentTypeRepository` generic usages
+### Step 11 — Fix `IContentTypeRepository` generic usages
 
 ```csharp
 // Before
@@ -315,7 +341,7 @@ var contentPageType = contentTypeRepository.Load(pageType) as PageType;
 ```
 ---
 
-### Step 11 — Fix `PropertyString` / `PropertyLongString` accessors
+### Step 12 — Fix `PropertyString` / `PropertyLongString` accessors
 
 ```csharp
 // Before: prop.PublicString, prop.PublicLongString
@@ -324,7 +350,7 @@ var contentPageType = contentTypeRepository.Load(pageType) as PageType;
 
 ---
 
-### Step 12 — Register validators explicitly
+### Step 13 — Register validators explicitly
 
 ```csharp
 // Implementations of IValidate<T> are no longer auto-discovered
@@ -333,7 +359,7 @@ services.AddCmsValidator<MyContentValidator>();
 
 ---
 
-### Step 13 — Fix routing events
+### Step 14 — Fix routing events
 
 ```csharp
 // Before
@@ -349,7 +375,7 @@ See [`references/sites-and-routing.md`](references/sites-and-routing.md).
 
 ---
 
-### Step 14 — Replace `SaveAction` usages
+### Step 15 — Replace `SaveAction` usages
 
 | Before | After |
 |---|---|
@@ -358,7 +384,7 @@ See [`references/sites-and-routing.md`](references/sites-and-routing.md).
 
 ---
 
-### Step 15 — Replace `PlugInAttribute` / scheduled jobs
+### Step 16 — Replace `PlugInAttribute` / scheduled jobs
 
 ```csharp
 // Before
@@ -372,41 +398,19 @@ public class MyJob : ScheduledJobBase { }
 
 ---
 
-### Step 16 — Update UI URL references
+### Step 17 — Update UI URL references
 
 The CMS UI base path changed from `/EPiServer/` to `/Optimizely/`. Update bookmarks, scripts, webhooks, and any hard-coded URL references. See [`references/sites-and-routing.md`](references/sites-and-routing.md) for the full mapping.
 
 ---
 
-### Step 17 — Verify Newtonsoft.Json
+### Step 18 — Verify Newtonsoft.Json
 
 If your project (or removed packages like `Episerver.Find`) used Newtonsoft.Json transitively, add an explicit reference:
 
 ```xml
 <PackageReference Include="Newtonsoft.Json" Version="13.x.x" />
 ```
-
----
-
-### Step 18 — Remove or upgrade incompatible third-party packages
-
-Several popular Optimizely ecosystem packages are incompatible with CMS 13. Check the list and act on each:
-
-| Package | Action |
-|---|---|
-| `EPiServer.Find.Cms` | Remove — no CMS 13 release. Also loses `Newtonsoft.Json` transitively (see Step 17). |
-| `EPiServer.Forms` | Upgrade to 6.0.0+ |
-| `EPiServer.Cms.WelcomeIntegration.UI` | Replace with `EPiServer.Cms.DamIntegration.UI` (6.0.0+) |
-| `Advanced.CMS.AdvancedReviews` | Remove — no CMS 13 release |
-| `Geta.NotFoundHandler.Optimizely` | Remove — incompatible; await updated release |
-| `Geta.Optimizely.Sitemaps` | Remove — incompatible; await updated release |
-| `Geta.Optimizely.GenericLinks` | Remove — incompatible; await updated release |
-| `Geta.Optimizely.ContentTypeIcons` | Remove — incompatible; await updated release |
-| `Geta.Optimizely.Categories` | Remove — incompatible. **Warning:** leaves orphaned `CategoryRoot`/`CategoryData` content types in DB causing "could not create instance" errors at startup. |
-| `Gulla.Episerver.SqlStudio` | Upgrade to 3.0.2+ |
-| `Stott.Optimizely.RobotsHandler` | Remove — incompatible; await updated release |
-
-See [`references/third-party-package-compatibility.md`](references/third-party-package-compatibility.md) for per-package removal steps, the generic removal procedure, and how to handle orphaned content types and scheduled jobs left by removed packages.
 
 ---
 
