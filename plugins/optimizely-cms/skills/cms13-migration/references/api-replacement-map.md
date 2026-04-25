@@ -58,6 +58,14 @@ Quick-reference tables for migrating types, methods, events, namespaces, and pac
 | `PageController<T>.PageContext.Page` | `PageContext.Content` | In CMS 13, `PageContext` exposes `.Content` directly — no extra injection needed in controller base classes. Only inject `IContentRouteHelper` if accessing content outside a `PageController<T>` subclass. |
 | `IPageRouteHelper.Page` | `IContentRouteHelper.Content` | Inject `IContentRouteHelper` |
 | `IPageRouteHelper.PageLink` | `IContentRouteHelper.ContentLink` | Inject `IContentRouteHelper` |
+| `EPiServer.CacheManager` | `ISynchronizedObjectInstanceCache` | Inject from DI |
+| `ContentFragment.IsInlineBlockAttributeName` | `ContentFragment.InlineBlockTypeIdAttributeName` | Direct replacement |
+| `EventsServiceKnownTypeAttribute` | `services.TryAddCmsEventsParameterType<T>()` | In service registration |
+| `PermanentLinkUtility.TryParseGuid` | `System.Guid.TryParse` | Standard BCL |
+| `ITransferPageData` / `TransferPageData` | `ITransferContentData` / `TransferContentData` | Direct replacement |
+| `RawPage` | `RawContent` | Direct replacement |
+| `RawProperty.PageDefinitionID` | `RawProperty.PropertyDefinitionID` | Direct replacement |
+| `IPropertyBlock.BlockPropertyDefinitionTypeID` | `IPropertyBlock.BlockPropertyDefinitionID` | Direct replacement |
 
 ---
 

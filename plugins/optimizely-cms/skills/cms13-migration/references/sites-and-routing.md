@@ -100,8 +100,10 @@ The default UI segment changed. Update any bookmarks, integrations, or hard-code
 | `/EPiServer/EPiServer.Cms.UI.Webhooks/` | `/Optimizely/Webhooks/` |
 | `/EPiServer/EPiServer.Cms.UI.Credentials/` | `/Optimizely/Credentials/` |
 | `/EPiServer/Optimizely.Graph.Cms/` | `/Optimizely/GraphQL/` |
+| `/EPiServer/Optimizely.Cms.OpalChat/` | `/Optimizely/OpalChat/` |
 | `/EPiServer/EPiServer.Cms.TinyMce/` | `/Optimizely/TinyMce/` |
 | `/EPiServer/EPiServer.Cms.UI.Extensibility/` | `/Optimizely/Extensibility/` |
+| `/EPiServer/EPiServer.Cms.DamIntegration.UI/` | `/Optimizely/DamIntegration/` |
 
 ---
 
@@ -179,4 +181,21 @@ Methods `UpdateLanguage` and `UpdateReplacementLanguage` removed → use `SetRou
 
 {{!-- After --}}
 <platform-navigation />
+```
+
+To adjust page content height alongside the navigation bar, wrap page content in the companion tag helper:
+
+```cshtml
+<platform-navigation-wrapper>CONTENT</platform-navigation-wrapper>
+```
+
+---
+
+## Miscellaneous routing changes
+
+- `EPiServer.Web.PermanentLinkUtility.TryParseGuid` removed → use `System.Guid.TryParse`
+- `EPiServer.Web.Routing.AncestorReferencesLoader` constructor parameter `contentEvents` removed
+- `EPiServer.Web.Routing.RoutingConstants.NodeKey` removed
+- `RouteArguments.MatchWildcardHost` obsoleted → use `MatchHost` instead
+- `ControllerActionEndpointSelectorPolicy` behavioral change: when no action name constraint exists in the route, the "Index" method is now selected first (if available) instead of the first valid endpoint by method sorting
 ```

@@ -19,6 +19,11 @@ These are silent failures that won't produce obvious errors at the right moment 
 - **`context.Locate.Advanced` inside `IConfigurableModule.Initialize()` fails.** `InitializationEngine.Locate` returns `IServiceLocator`, which is removed. Any call like `context.Locate.Advanced.GetInstance<T>()` will not compile. Replace with `context.Services.GetInstance<T>()`.
 - **`ServiceLocator.Current.GetInstance<T>()` no longer compiles anywhere.** The `GetInstance<T>()` extension came from `ServiceLocatorExtensions`, which is removed. `ServiceLocator.Current` itself still works in CMS 13 (now returns `IServiceProvider`), but you must switch to `.GetRequiredService<T>()` (from `Microsoft.Extensions.DependencyInjection`). The fix varies by context — see Step 4.
 - **The DI namespace change is a silent build failure.** If you have `using Microsoft.Extensions.DependencyInjection;` and call `AddCmsCore()`, the old extension method is gone — you get a confusing "no overload" error. Change to `using EPiServer.DependencyInjection;`.
+- **`IApprovalEngine` now enforces the approval workflow before publishing.** Content under an approval definition will throw `ValidationException` on `SaveAction.Publish`. To bypass (e.g., in programmatic migrations), the current user must have Administer rights and you must pass `SaveAction.SkipApprovalValidation`. See [`references/security-and-access-control.md`](references/security-and-access-control.md).
+- **`IContentVersionRepository.List` silently returns `totalCount = -1`.** Unless you explicitly set `VersionFilter.IncludeTotalCount = true`, the count is not computed. Code that reads `totalCount` after calling `List` will receive `-1` with no error.
+- **`ClientEditorAttribute.EditorConfiguration` JSON must use double-quoted property names.** CMS 13 parses this with `System.Text.Json`. Single-quoted or unquoted JSON property keys (common in C# string literals) will silently fail to deserialize, producing an empty editor configuration.
+- **`/lang` folder localization files are no longer auto-registered.** The `XmlLocalizationProvider` that scanned the `/lang` folder on startup is removed. If you have XML language files there, they must be switched to embedded resources in the assembly instead. See [`references/framework-and-platform.md`](references/framework-and-platform.md) for localization changes.
+- **Visitor Groups are not enabled by default.** Unless you call `services.AddVisitorGroupsMvc()` and `services.AddVisitorGroupsUI()`, visitor group criteria and personalization will be unavailable with no compile-time error. See Step 3 and [`references/content-management-and-repository.md`](references/content-management-and-repository.md).
 
 ## Migration workflow
 
@@ -383,7 +388,41 @@ If your project (or removed packages like `Episerver.Find`) used Newtonsoft.Json
 
 ---
 
-### Step 18 — Look at build warnings fix obsolete API usages
+### Step 18 — Remove or upgrade incompatible third-party packages
+
+Several popular Optimizely ecosystem packages are incompatible with CMS 13. Check the list and act on each:
+
+| Package | Action |
+|---|---|
+| `EPiServer.Find.Cms` | Remove — no CMS 13 release. Also loses `Newtonsoft.Json` transitively (see Step 17). |
+| `EPiServer.Forms` | Upgrade to 6.0.0+ |
+| `EPiServer.Cms.WelcomeIntegration.UI` | Replace with `EPiServer.Cms.DamIntegration.UI` (6.0.0+) |
+| `Advanced.CMS.AdvancedReviews` | Remove — no CMS 13 release |
+| `Geta.NotFoundHandler.Optimizely` | Remove — incompatible; await updated release |
+| `Geta.Optimizely.Sitemaps` | Remove — incompatible; await updated release |
+| `Geta.Optimizely.GenericLinks` | Remove — incompatible; await updated release |
+| `Geta.Optimizely.ContentTypeIcons` | Remove — incompatible; await updated release |
+| `Geta.Optimizely.Categories` | Remove — incompatible. **Warning:** leaves orphaned `CategoryRoot`/`CategoryData` content types in DB causing "could not create instance" errors at startup. |
+| `Gulla.Episerver.SqlStudio` | Upgrade to 3.0.2+ |
+| `Stott.Optimizely.RobotsHandler` | Remove — incompatible; await updated release |
+
+See [`references/third-party-package-compatibility.md`](references/third-party-package-compatibility.md) for per-package removal steps, the generic removal procedure, and how to handle orphaned content types and scheduled jobs left by removed packages.
+
+---
+
+### Step 19 — Review security and access control changes
+
+Review the access control and approval workflow changes:
+
+- `IApprovalEngine` now enforces approval definitions on publish — programmatic saves may need `SaveAction.SkipApprovalValidation` with Administer rights
+- `PermissionRepository` sync methods removed — use async equivalents
+- `IContentSecurityRepository` events moved to `IContentSecurityEvents` interface
+
+See [`references/security-and-access-control.md`](references/security-and-access-control.md) for details.
+
+---
+
+### Step 20 — Look at build warnings fix obsolete API usages
 
 build the solution and look for warnings about obsolete APIs. Many of these have direct replacements that need to be updated in code. consult the complete CMS 12 → 13 mapping in [`references/api-replacement-map.md`](references/api-replacement-map.md) for the full list of API replacements.
 
@@ -410,5 +449,8 @@ build the solution and look for warnings about obsolete APIs. Many of these have
 | `context.Locate` / `context.Locate.Advanced.GetInstance<T>()` fails | `IServiceLocator` is removed; replace with `context.Services.GetInstance<T>()` |
 | `'IContentRouteHelper' does not contain 'Page'` | Use `PageContext.Content` — in CMS 13, `PageContext` exposes `.Content` instead of `.Page`; no need to inject `IContentRouteHelper` separately in controller base classes |
 | `'PageData.PageLink' is obsolete` warning | Replace with `page.ContentLink` throughout code and views |
+| `IVisitorGroupRepository` / visitor group criteria not found at runtime | Add `services.AddVisitorGroupsMvc()` and `services.AddVisitorGroupsUI()` in service registration |
+| `ValidationException` thrown on `SaveAction.Publish` for content with approval workflow | Add `SaveAction.SkipApprovalValidation` to the save action (requires Administer rights) |
+| Editor configuration missing after upgrade (`ClientEditorAttribute`) | Ensure `EditorConfiguration` JSON uses double-quoted property names — System.Text.Json is strict |
 
 If an API isn't covered above, consult [`references/api-replacement-map.md`](references/api-replacement-map.md) for the complete CMS 12 → 13 type, method, event, and namespace mapping.

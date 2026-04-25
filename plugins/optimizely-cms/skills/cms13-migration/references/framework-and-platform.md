@@ -135,12 +135,16 @@ Add `#nullable enable` per-file or enable project-wide and address warnings.
 | `IContentRepository.GetReferencesToContent` | `includeDecendents` param | `includeDescendants` |
 | `ContentProvider.GetReferencesToLocalContent` | `includeDecendents` param | `includeDescendants` |
 | `IPropertyDefinitionRepository.List` | `pageTypeID` param | `contentTypeID` |
+| `PropertyDefinitionRepository.List` | `pageTypeID` param | `contentTypeID` |
 | `LanguageBranch` | `ValidateLanguageEdititingAccessRights` | `ValidateLanguageEditingAccessRights` |
 | Class | `DefaultContentTypeAvailablilityService` | `DefaultContentTypeAvailabilityService` |
 | Class | `VirutalPathResolverExtensions` | `VirtualPathResolverExtensions` |
 | `VisitorGroupOptions` | `StatisticsPersistanceInterval` | `StatisticsPersistenceInterval` |
 | `SearchWordCriterionOptions` | `SearchStringRegexpression` | `SearchStringRegex` |
 | `PropertyLinkCollection` | `PrincipalAcccessor` | `PrincipalAccessor` |
+| `PlugInSummaryAttribute` constructor | `moreInfourl` param | `moreInfoUrl` |
+| `ContentScannerExtension.AssignAvailableTypes` | `contentypeModel` param | `contentTypeModel` |
+| `IFileTransferObject.CheckIn` | `commment` param | `comment` |
 
 ---
 
@@ -164,7 +168,63 @@ services.AddCmsValidator<MyValidator>();
 
 ## InitializationEngine changes
 
+- `IInitializationEngine` interface removed (was not used in practice)
 - `Assemblies` property removed → use `AppDomain.CurrentDomain.GetAssemblies()` and filter dynamic assemblies
+- `Set` method removed from `Modules` property
+- `Set` method removed from `Locate` property — use `context.Services` instead
 - `ScanAssemblies`, `BuildTypeScanner`, `GetDependencySortedModules`, `ConfigureModules` methods removed
 - `Configure()` called multiple times now throws `InvalidOperationException` — use `Configure(complete: false)` instead
 - `FrameworkInitialization` and `DataInitialization` no longer implement `IConfigurableModule` — services registered via `AddCmsFramework()` / `AddCmsData()`
+- `HostType.LegacyMirroringAppDomain` removed (mirroring no longer supported)
+- `AssemblyList` obsolete class removed
+- `InitializableModuleAttribute.UninitializeOnShutdown` removed — uninitialize is always called on shutdown
+
+---
+
+## Removed framework APIs
+
+- `EPiServer.Framework.EnvironmentOptions.BasePath` — removed
+- `EPiServer.Framework.SmtpOptions.SenderEmailAddress` and `SenderDisplayName` — removed (never used; see `NotificationOptions` for notification sender config)
+- `EPiServer.Framework.Timers.ITimer` — obsolete; no implementation is registered by the Framework
+- `EPiServer.Web.IWebHostingEnvironment` / `EPiServer.Web.WebHostingEnvironment` — obsolete (`WebRootPath` available from `Microsoft.AspNetCore.Hosting.IWebHostEnvironment`)
+- `EPiServer.Web.VirtualPathResolver` — obsolete
+- `EPiServer.Framework.Web.Resources.ClientResources.Render` and `RenderRequiredResources` — removed
+- `EPiServer.Framework.Security.ValidateAntiForgeryReleaseToken` — removed; use `Microsoft.AspNetCore.Mvc.ValidateAntiForgeryTokenAttribute`
+- `AspNetAntiforgery` and `AspNetAntiforgeryOptions` — removed
+- `EPiServer.Framework.Security.ISiteSecretManager` — made obsolete (existing secrets can be read but not created)
+- `EPiServer.ServiceLocation.ServiceCollectionExtensions.AddServiceAccessor` non-generic overload removed — use `AddServiceAccessor<T>()` instead
+
+### `EPiServer.Framework.FileSystem` — removed classes
+
+The following obsolete FileSystem classes were removed:
+- `IDirectory`, `IFile`, `IFileSystemWatcher`, `PhysicalDirectory`, `PhysicalFile`
+
+### `EPiServer.Security.SecurityEntityProvider` — sync methods removed
+
+Use the async equivalents:
+
+| Removed | Use instead |
+|---|---|
+| `GetRolesForUser` | `GetUsersInRoleAsync` |
+| `FindUsersInRole` | `FindUsersInRoleAsync` |
+| `Search` | `SearchRolesAsync` / `SearchUsersByNameAsync` / `SearchUsersByEmailAsync` |
+
+Extension methods `SearchRoles`, `SearchUsersByName`, `SearchUsersByEmail`, `GetUsersInRole`, `FindUsersInRole` from `SecurityEntityProviderExtensions` are also removed.
+
+---
+
+## Caching changes
+
+`EPiServer.CacheManager` is obsolete. Use the `EPiServer.Framework.Cache.ISynchronizedObjectInstanceCache` service directly instead.
+
+`ISynchronizedObjectInstanceCache.SynchronizationFailedStrategy` setting is no longer applied to the cache.
+
+---
+
+## Event system changes
+
+- `EPiServer.Events.EventMessage.VerificationData` and `SiteId` were removed. The event provider is now responsible for message security and integrity.
+- `IEventMessageFactory.Create` no longer takes a parameter to add a checksum.
+- `EPiServer.Events.Providers.EventProvider.ValidateMessageIntegrity` setting is no longer used.
+- `EPiServer.Events.EventsServiceKnownTypeAttribute` replaced by `services.TryAddCmsEventsParameterType<T>()`.
+- `EPiServer.Events.EventsServiceKnownTypesLookup` replaced by `EPiServer.Events.EventProviderOptions.ParameterTypes`.
